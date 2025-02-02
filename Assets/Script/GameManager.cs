@@ -46,7 +46,7 @@ public class GameManager : MonoBehaviour
     {
         PlayerBalance = 2000;
         PlayerBalanceAction?.Invoke(PlayerBalance);
-        BetAmount = 0.10f;
+        BetAmount = 1f;
         BetAmountAction?.Invoke(BetAmount);
         WinAmount = 0;
         WinAmountAction?.Invoke(WinAmount);
@@ -66,15 +66,15 @@ public class GameManager : MonoBehaviour
 
     public void OnIncreseBetAmount()
     {
-        if ((BetAmount + 0.1f) <= 25)
-            BetAmount += 0.1f;
+        if ((BetAmount + 1f) <= 25)
+            BetAmount += 1f;
         BetAmountAction?.Invoke(BetAmount);
     }
 
     public void OnDecreseBetAmount()
     {
-        if ((BetAmount - 0.1f) > 0.1f)
-            BetAmount -= 0.1f;
+        if ((BetAmount - 1f) > 1f)
+            BetAmount -= 1f;
         BetAmountAction?.Invoke(BetAmount);
     }
 
@@ -106,9 +106,9 @@ public class GameManager : MonoBehaviour
                 }
                 float winAmount = (BetAmount + (BetAmount * MultiplierValue * MatchedColoumnsCount));
                 Debug.Log($"Multiplier value : {MultiplierValue} , WinAmount : {winAmount} , Rank : {matchedRank.ToString()}");
-                SetWinAmount(winAmount);
                 UpdateBalanceOnWinning(winAmount);
                 _UIController.ResultHandler.ShowMe();
+                SetWinAmount(winAmount);
                 CancelInvoke(nameof(ResetHandler));
                 Invoke(nameof(ResetHandler), 3);
             }
@@ -118,6 +118,7 @@ public class GameManager : MonoBehaviour
     public void ResetHandler()
     {
         _UIController.ResultHandler.HideMe();
+        InGameHandler.Instance.CheckUIButtons();
         InGameHandler.Instance.CheckPlusMinus();
         _UIController.InGameHandler.ShowMe();
     }
@@ -150,6 +151,12 @@ public class GameManager : MonoBehaviour
     {
         return BetAmount;
     }
+}
+
+[System.Serializable]
+public class SlotPosition
+{
+    public RectTransform[] Slots;
 }
 
 [Serializable]

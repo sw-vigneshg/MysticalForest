@@ -30,15 +30,13 @@ public class AudioController : MonoBehaviour
 
     public void PlayReelSpin()
     {
-        if (ReelStarts.isPlaying)
-            ReelStarts.Stop();
-        ReelStarts.Play();
+        if (!ReelStarts.isPlaying)
+            ReelStarts.Play();
     }
 
     public void PlayReelStops()
     {
-        if (ReesStop.isPlaying)
-            ReesStop.Stop();
+        ReelStarts.Stop();
         ReesStop.Play();
     }
 

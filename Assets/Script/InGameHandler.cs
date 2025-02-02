@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
@@ -12,8 +13,6 @@ public class InGameHandler : UiHandler
     public static InGameHandler Instance;
 
     [Header("InGame UI Variables ************** ")]
-    [SerializeField] private RectTransform SpinAnimGameObject1;
-    [SerializeField] private RectTransform SpinAnimGameObject2;
     [SerializeField] private GameObject WelcomPanel;
     [SerializeField] private Toggle WelcomeToggle;
     [SerializeField] private Button ContinueBtn;
@@ -27,17 +26,13 @@ public class InGameHandler : UiHandler
     [SerializeField] private Button CloseBtn;
     [SerializeField] private GameObject InfoPanel;
     [SerializeField] private RectTransform[] InfoPanels;
-    public float Speed;
     private int _CurrentIndex = 0;
     private bool _CanMove = true;
 
     [Header("Slot Variables ***************** ")]
-    [SerializeField] private RectTransform[] Coloumn1Holder;
-    [SerializeField] private RectTransform[] Coloumn2Holder;
-    [SerializeField] private RectTransform[] Coloumn3Holder;
-    [SerializeField] private RectTransform[] Coloumn4Holder;
-    [SerializeField] private RectTransform[] Coloumn5Holder;
+    [SerializeField] private SlotPosition[] SlotPositions;
     [SerializeField] private RectTransform[] DummySlotParents;
+    [SerializeField] private ReelHandler[] ReelHandlers;
     public SlotManagers[] SlotManagers;
 
     [Header("Betting Variables *********** ")]
@@ -123,7 +118,7 @@ public class InGameHandler : UiHandler
     {
         float val = _GameManager.GetBetAmount();
         PlusBtn.interactable = (val < 25);
-        MinusBtn.interactable = (val > 0.1f);
+        MinusBtn.interactable = (val > 1f);
     }
 
     private void OnClickPlus()
@@ -198,44 +193,20 @@ public class InGameHandler : UiHandler
     {
         _GameManager.IsSpinStarted = true;
         _GameManager.UpdateBalanceOnBet();
-        EnableSpin(true);
         ResetSlotManagers();
         CheckUIButtons();
-        StopCoroutine(nameof(SpinAnimation));
-        StartCoroutine(nameof(SpinAnimation));
-
+        SpinAnimation(true);
+        AudioController.Instance.PlayReelSpin();
         CancelInvoke(nameof(OnClickStop));             // For Auto Spin Stop ....... if need we can use ...........
         Invoke(nameof(OnClickStop), 5);
     }
 
-    private IEnumerator SpinAnimation()
+    private void SpinAnimation(bool canSpin)
     {
-        Vector3 targetPos = new Vector3(SpinAnimGameObject1.anchoredPosition.x, -615f, 0);
-        Vector3 startingPos = new Vector3(SpinAnimGameObject1.anchoredPosition.x, 675f, 0);
-
-        while (_GameManager.IsSpinStarted)
+        foreach (ReelHandler reel in ReelHandlers)
         {
-            SpinAnimGameObject1.transform.Translate(Vector3.down * Speed * Time.deltaTime);
-            SpinAnimGameObject2.transform.Translate(Vector3.down * Speed * Time.deltaTime);
-
-            if (SpinAnimGameObject1.transform.localPosition.y <= -620f)
-            {
-                SpinAnimGameObject1.transform.localPosition = startingPos;
-            }
-
-            if (SpinAnimGameObject2.transform.localPosition.y <= -620f)
-            {
-                SpinAnimGameObject2.transform.localPosition = startingPos;
-            }
-
-            yield return new WaitForEndOfFrame();
+            reel.HandleSpin(canSpin);
         }
-    }
-
-    private void EnableSpin(bool canEnable)
-    {
-        SpinAnimGameObject1.gameObject.SetActive(canEnable);
-        SpinAnimGameObject2.gameObject.SetActive(canEnable);
     }
 
     private void OnClickStop()
@@ -244,16 +215,13 @@ public class InGameHandler : UiHandler
         {
             _GameManager.IsSpinStarted = false;
             StopBtn.interactable = false;
-            EnableSpin(false);
-            SpinAnimGameObject1.transform.localPosition = new Vector3(SpinAnimGameObject1.anchoredPosition.x, 30f, 0);
-            SpinAnimGameObject2.transform.localPosition = new Vector3(SpinAnimGameObject1.anchoredPosition.x, 675f, 0);
             SetSlotData();
             StopCoroutine(nameof(OnStoSpin));
             StartCoroutine(nameof(OnStoSpin));
         }
     }
 
-    private void CheckUIButtons()
+    public void CheckUIButtons()
     {
         StopBtn.gameObject.SetActive(_GameManager.IsSpinStarted);
         StopBtn.interactable = true;
@@ -274,41 +242,26 @@ public class InGameHandler : UiHandler
         }
     }
 
-    public IEnumerator OnStoSpin()
+    private IEnumerator OnStoSpin()
     {
-        for (int i = 0; i < SlotManagers.Length; i++)
+        int slotHolderIndex = 0;
+        while (slotHolderIndex <= SlotManagers.Length - 1)
         {
-            for (int j = 0; j < SlotManagers[i].Slots.Count; j++)
+            ReelHandlers[slotHolderIndex].HandleSpin(false);
+            if (SlotManagers[slotHolderIndex].Slots.Count > 0)
             {
-                yield return new WaitForSeconds(0.1f);
-                AudioController.Instance.PlayLanding();
-                if (i == 0)
+                for (int i = 0; i < SlotManagers[slotHolderIndex].Slots.Count; i++)
                 {
-                    SlotManagers[i].Slots[j].transform.SetParent(Coloumn1Holder[j].transform);
+                    SlotManagers[slotHolderIndex].Slots[i].transform.SetParent(SlotPositions[slotHolderIndex].Slots[i].transform);
+                    SlotManagers[slotHolderIndex].Slots[i].transform.DOLocalMove(Vector3.zero, 0.1f).SetEase(Ease.InOutBounce);
+                    yield return new WaitForSeconds(0.2f);
                 }
-                else if (i == 1)
-                {
-                    SlotManagers[i].Slots[j].transform.SetParent(Coloumn2Holder[j].transform);
-                }
-                else if (i == 2)
-                {
-                    SlotManagers[i].Slots[j].transform.SetParent(Coloumn3Holder[j].transform);
-                }
-                else if (i == 3)
-                {
-                    SlotManagers[i].Slots[j].transform.SetParent(Coloumn4Holder[j].transform);
-                }
-                else if (i == 4)
-                {
-                    SlotManagers[i].Slots[j].transform.SetParent(Coloumn5Holder[j].transform);
-                }
-                SlotManagers[i].Slots[j].transform.DOLocalMove(Vector3.zero, 0.1f).SetEase(Ease.InOutBounce);
             }
+            yield return new WaitForSeconds(0.5f);
+            slotHolderIndex += 1;
         }
-        yield return new WaitForSeconds(2f);
+        AudioController.Instance.PlayReelStops();
         CheckForWinPattern();
-        CheckUIButtons();
-        CheckPlusMinus();
     }
 
     private void SetSlotData()
@@ -361,8 +314,16 @@ public class InGameHandler : UiHandler
         else
         {
             AudioController.Instance.PlayError();
+            CancelInvoke(nameof(ResetHUD));
+            Invoke(nameof(ResetHUD), 2f);
         }
         _GameManager.MatchedColoumnsCount = 0;
+    }
+
+    private void ResetHUD()
+    {
+        CheckUIButtons();
+        CheckPlusMinus();
     }
 
     private void SetGlowAnimation()

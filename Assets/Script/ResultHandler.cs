@@ -15,20 +15,15 @@ public class ResultHandler : UiHandler
     [Header("Script Reference ************ ")]
     private GameManager _GameManager;
 
-    private void Start()
-    {
-        _GameManager = GameManager.Instance;
-
-        if (_GameManager != null)
-        {
-            _GameManager.WinAmountAction += ShowWinAmount;
-        }
-    }
-
     public override void ShowMe()
     {
         base.ShowMe();
         OnShowMe();
+        _GameManager = GameManager.Instance;
+        if (_GameManager != null)
+        {
+            _GameManager.WinAmountAction += ShowWinAmount;
+        }
     }
     public override void HideMe()
     {
